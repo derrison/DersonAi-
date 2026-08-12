@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DersonAI — Text to Video</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#14131a;
+    --bg-surface:#1e1d26;
+    --bg-surface-2:#28262f;
+    --amber:#e2a542;
+    --amber-dim:#a97a2f;
+    --teal:#4f8c82;
+    --teal-dim:#356158;
+    --red:#c1503f;
+    --text-primary:#f3efe7;
+    --text-muted:#9a96a3;
+    --border:#35333e;
+    --stripe:repeating-linear-gradient(135deg, #f3efe7 0 18px, #14131a 18px 36px);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg-base);
+    color:var(--text-primary);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--amber);color:#14131a;}
+
+  /* ---------- Slate header ---------- */
+  .slate{
+    position:relative;
+    background:var(--bg-surface);
+    border-bottom:1px solid var(--border);
+    padding:22px 28px 18px;
+    overflow:hidden;
+  }
+  .slate::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:8px;
+    background:var(--stripe);
+    opacity:.9;
+  }
+  .slate-inner{
+    display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    margin-top:8px;
+  }
+  .brand{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size:30px;
+    letter-spacing:0.5px;
+    color:var(--text-primary);
+    display:flex; align-items:baseline; gap:10px;
+  }
+  .brand span{color:var(--amber);}
+  .brand small{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    font-weight:500;
+    color:var(--text-muted);
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+  }
+  .slate-meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--text-muted);
+    text-align:right;
+  }
+
+  /* ---------- Layout ---------- */
+  .stage{
+    max-width:1180px;
+    margin:0 auto;
+    padding:28px 20px 60px;
+    display:grid;
+    grid-template-columns: 380px 1fr;
+    gap:22px;
+  }
+  @media (max-width: 880px){
+    .stage{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--bg-surface);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:20px;
+  }
+  .panel + .panel{margin-top:20px;}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin:0 0 14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--border);
+  }
+
+  label{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.8px;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin:16px 0 6px;
+  }
+  label:first-of-type{margin-top:0;}
+
+  input[type="password"], input[type="text"], textarea, select{
+    width:100%;
+    background:var(--bg-surface-2);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    border-radius:4px;
+    padding:10px 12px;
+    font-family:'Inter', sans-serif;
+    font-size:13.5px;
+    outline:none;
+    transition:border-color .15s ease;
+  }
+  input:focus, textarea:focus, select:focus{
+    border-color:var(--amber);
+  }
+  textarea{resize:vertical; min-height:92px; line-height:1.45;}
+  select{appearance:none; background-image:linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%); background-position: calc(100% - 16px) center, calc(100% - 11px) center; background-size:5px 5px, 5px 5px; background-repeat:no-repeat; cursor:pointer;}
+
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+
+  .key-hint{
+    font-size:11.5px;
+    color:var(--text-muted);
+    margin-top:6px;
+    line-height:1.5;
+  }
+  .key-hint a{color:var(--teal); text-decoration:none; border-bottom:1px dotted var(--teal-dim);}
+
+  .action-btn{
+    width:100%;
+    margin-top:20px;
+    padding:14px 16px;
+    background:var(--red);
+    color:#f3efe7;
+    border:none;
+    border-radius:4px;
+    font-family:'Oswald', sans-serif;
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    transition:background .15s ease, transform .05s ease;
+  }
+  .action-btn:hover:not(:disabled){background:#d15b48;}
+  .action-btn:active:not(:disabled){transform:scale(0.99);}
+  .action-btn:disabled{background:var(--bg-surface-2); color:var(--text-muted); cursor:not-allowed;}
+  .action-btn .dot{width:8px; height:8px; border-radius:50%; background:currentColor;}
+
+  .error-box{
+    margin-top:14px;
+    padding:12px 14px;
+    background:rgba(193,80,63,0.12);
+    border:1px solid rgba(193,80,63,0.4);
+    border-radius:4px;
+    font-size:12.5px;
+    line-height:1.5;
+    color:#f0b3a8;
+    display:none;
+  }
+
+  /* ---------- Monitor / preview ---------- */
+  .monitor-wrap{
+    position:relative;
+    background:#0c0b10;
+    border:1px solid var(--border);
+    border-radius:6px;
+    aspect-ratio:16/9;
+    overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .monitor-wrap video{width:100%; height:100%; object-fit:contain; background:#000;}
+  .bracket{position:absolute; width:26px; height:26px; border-color:var(--teal); opacity:0.85;}
+  .bracket.tl{top:14px; left:14px; border-top:2px solid; border-left:2px solid;}
+  .bracket.tr{top:14px; right:14px; border-top:2px solid; border-right:2px solid;}
+  .bracket.bl{bottom:14px; left:14px; border-bottom:2px solid; border-left:2px solid;}
+  .bracket.br{bottom:14px; right:14px; border-bottom:2px solid; border-right:2px solid;}
+
+  .standby{
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--text-muted);
+  }
+  .standby .big{
+    font-family:'Oswald', sans-serif;
+    font-size:15px;
+    letter-spacing:3px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+  }
+  .scanline{
+    position:absolute; left:0; right:0; height:2px;
+    background:linear-gradient(90deg, transparent, rgba(79,140,130,0.55), transparent);
+    animation:scan 3.2s linear infinite;
+  }
+  @keyframes scan{
+    0%{top:0%;}
+    100%{top:100%;}
+  }
+  .working .standby{display:none;}
+
+  .status-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--text-muted);
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .status-left{display:flex; align-items:center; gap:10px;}
+  .status-led{width:8px; height:8px; border-radius:50%; background:var(--border);}
+  .status-led.queued{background:var(--amber); box-shadow:0 0 8px var(--amber);}
+  .status-led.running{background:var(--teal); box-shadow:0 0 8px var(--teal); animation:pulse 1.1s ease-in-out infinite;}
+  .status-led.done{background:#7cb88f;}
+  .status-led.failed{background:var(--red);}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.35;}}
+  .timecode{letter-spacing:1px;}
+
+  /* ---------- History reel ---------- */
+  .reel-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin-bottom:12px;
+  }
+  .reel{
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    padding-bottom:6px;
+  }
+  .reel::-webkit-scrollbar{height:6px;}
+  .reel::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+  .take-card{
+    flex:0 0 200px;
+    background:var(--bg-surface-2);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:10px;
+    cursor:pointer;
+    transition:border-color .15s ease;
+  }
+  .take-card:hover{border-color:var(--amber-dim);}
+  .take-card video{width:100%; height:90px; object-fit:cover; border-radius:3px; background:#000; margin-bottom:8px;}
+  .take-num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--amber);
+    letter-spacing:1px;
+  }
+  .take-prompt{
+    font-size:11.5px;
+    color:var(--text-muted);
+    line-height:1.4;
+    margin-top:4px;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .empty-reel{
+    font-size:12.5px;
+    color:var(--text-muted);
+    font-style:italic;
+  }
+
+  .adv-toggle{
+    background:none; border:none; color:var(--teal);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:0.5px;
+    cursor:pointer;
+    padding:0;
+    margin-top:16px;
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+  .adv-fields{display:none; margin-top:4px;}
+  .adv-fields.open{display:block;}
+</style>
+</head>
+<body>
+
+  <div class="slate">
+    <div class="slate-inner">
+      <div class="brand">DERSON<span>AI</span> <small>Text&nbsp;→&nbsp;Video</small></div>
+      <div class="slate-meta">RUNWAY API &nbsp;·&nbsp; SCENE 01 &nbsp;·&nbsp; <span id="clock">--:--:--</span></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <!-- LEFT: controls -->
+    <div>
+      <div class="panel">
+        <div class="eyebrow">Credentials</div>
+        <label for="apiKey">Runway API key</label>
+        <input type="password" id="apiKey" placeholder="rw_..." autocomplete="off" />
+        <div class="key-hint">Kept only in this browser tab's memory — never saved, never sent anywhere but Runway's API. Get a key at <a href="https://dev.runwayml.com" target="_blank" rel="noopener">dev.runwayml.com</a>.</div>
+
+        <div class="eyebrow" style="margin-top:22px;">Shot</div>
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" placeholder="A cinematic aerial shot of a coastal city at golden hour, slow drift, warm light"></textarea>
+
+        <div class="row2">
+          <div>
+            <label for="model">Model</label>
+            <select id="model">
+              <option value="veo3.1">Veo 3.1</option>
+              <option value="veo3.1_fast">Veo 3.1 Fast</option>
+              <option value="veo3">Veo 3</option>
+            </select>
+          </div>
+          <div>
+            <label for="duration">Duration</label>
+            <select id="duration">
+              <option value="4">4 sec</option>
+              <option value="6" selected>6 sec</option>
+              <option value="8">8 sec</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="ratio">Aspect ratio</label>
+        <select id="ratio">
+          <option value="1280:720" selected>1280:720 — landscape</option>
+          <option value="720:1280">720:1280 — portrait</option>
+          <option value="1104:832">1104:832 — landscape</option>
+          <option value="832:1104">832:1104 — portrait</option>
+          <option value="960:960">960:960 — square</option>
+          <option value="1584:672">1584:672 — wide</option>
+        </select>
+
+        <button class="adv-toggle" id="advToggle">+ negative prompt & seed</button>
+        <div class="adv-fields" id="advFields">
+          <label for="negPrompt">Negative prompt (optional)</label>
+          <input type="text" id="negPrompt" placeholder="blurry, low quality, text, watermark" />
+          <label for="seed">Seed (optional)</label>
+          <input type="text" id="seed" placeholder="Leave blank for random" />
+        </div>
+
+        <button class="action-btn" id="generateBtn"><span class="dot"></span> Action — Generate</button>
+        <div class="error-box" id="errorBox"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: monitor + reel -->
+    <div>
+      <div class="panel">
+        <div class="eyebrow">Playback monitor</div>
+        <div class="monitor-wrap" id="monitorWrap">
+          <div class="bracket tl"></div>
+          <div class="bracket tr"></div>
+          <div class="bracket bl"></div>
+          <div class="bracket br"></div>
+          <div class="standby" id="standby">
+            <div class="big">Standby</div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <div class="status-left">
+            <div class="status-led" id="statusLed"></div>
+            <span id="statusText">Idle</span>
+          </div>
+          <div class="timecode" id="timecode">00:00:00</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="reel-title">Takes this session</div>
+        <div class="reel" id="reel">
+          <div class="empty-reel">Nothing shot yet — your generated clips will line up here.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const BASE_URL = "https://api.dev.runwayml.com/v1";
+  const RUNWAY_VERSION = "2024-11-06";
+
+  const els = {
+    apiKey: document.getElementById('apiKey'),
+    prompt: document.getElementById('prompt'),
+    model: document.getElementById('model'),
+    duration: document.getElementById('duration'),
+    ratio: document.getElementById('ratio'),
+    negPrompt: document.getElementById('negPrompt'),
+    seed: document.getElementById('seed'),
+    generateBtn: document.getElementById('generateBtn'),
+    errorBox: document.getElementById('errorBox'),
+    monitorWrap: document.getElementById('monitorWrap'),
+    standby: document.getElementById('standby'),
+    statusLed: document.getElementById('statusLed'),
+    statusText: document.getElementById('statusText'),
+    timecode: document.getElementById('timecode'),
+    reel: document.getElementById('reel'),
+    advToggle: document.getElementById('advToggle'),
+    advFields: document.getElementById('advFields'),
+    clock: document.getElementById('clock'),
+  };
+
+  let takeCount = 0;
+  let timerInterval = null;
+  let elapsedSeconds = 0;
+
+  // wall clock in header, purely atmospheric
+  function tickClock(){
+    const now = new Date();
+    els.clock.textContent = now.toTimeString().slice(0,8);
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  els.advToggle.addEventListener('click', () => {
+    const open = els.advFields.classList.toggle('open');
+    els.advToggle.textContent = open ? "− negative prompt & seed" : "+ negative prompt & seed";
+  });
+
+  function showError(msg){
+    els.errorBox.textContent = msg;
+    els.errorBox.style.display = 'block';
+  }
+  function clearError(){
+    els.errorBox.style.display = 'none';
+    els.errorBox.textContent = '';
+  }
+
+  function setStatus(state, label){
+    els.statusLed.className = 'status-led ' + state;
+    els.statusText.textContent = label;
+  }
+
+  function formatElapsed(sec){
+    const m = String(Math.floor(sec/60)).padStart(2,'0');
+    const s = String(sec%60).padStart(2,'0');
+    return `00:${m}:${s}`;
+  }
+
+  function startTimer(){
+    elapsedSeconds = 0;
+    els.timecode.textContent = formatElapsed(0);
+    timerInterval = setInterval(() => {
+      elapsedSeconds++;
+      els.timecode.textContent = formatElapsed(elapsedSeconds);
+    }, 1000);
+  }
+  function stopTimer(){
+    clearInterval(timerInterval);
+  }
+
+  function setWorking(isWorking){
+    els.monitorWrap.classList.toggle('working', isWorking);
+    els.generateBtn.disabled = isWorking;
+    els.generateBtn.innerHTML = isWorking
+      ? '<span class="dot"></span> Rolling…'
+      : '<span class="dot"></span> Action — Generate';
+    if (isWorking){
+      // scanline sweep while working
+      if (!document.getElementById('scanline')){
+        const sl = document.createElement('div');
+        sl.className = 'scanline';
+        sl.id = 'scanline';
+        els.monitorWrap.appendChild(sl);
+      }
+    } else {
+      const sl = document.getElementById('scanline');
+      if (sl) sl.remove();
+    }
+  }
+
+  function addTake(prompt, videoUrl){
+    takeCount++;
+    if (els.reel.querySelector('.empty-reel')) els.reel.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'take-card';
+    card.innerHTML = `
+      <video src="${videoUrl}" muted loop preload="metadata"></video>
+      <div class="take-num">TAKE ${String(takeCount).padStart(2,'0')}</div>
+      <div class="take-prompt">${prompt.replace(/</g,'&lt;')}</div>
+    `;
+    const vid = card.querySelector('video');
+    card.addEventListener('mouseenter', () => vid.play().catch(()=>{}));
+    card.addEventListener('mouseleave', () => { vid.pause(); vid.currentTime = 0; });
+    card.addEventListener('click', () => playInMonitor(videoUrl));
+    els.reel.prepend(card);
+  }
+
+  function playInMonitor(url){
+    els.monitorWrap.classList.remove('working');
+    const old = els.monitorWrap.querySelector('video');
+    if (old) old.remove();
+    const video = document.createElement('video');
+    video.src = url;
+    video.controls = true;
+    video.autoplay = true;
+    video.loop = true;
+    els.standby.style.display = 'none';
+    els.monitorWrap.appendChild(video);
+  }
+
+  async function pollTask(taskId, apiKey){
+    const headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'X-Runway-Version': RUNWAY_VERSION,
+    };
+    while (true){
+      await new Promise(r => setTimeout(r, 5000));
+      let res;
+      try{
+        res = await fetch(`${BASE_URL}/tasks/${taskId}`, { headers });
+      } catch(e){
+        throw new Error("Lost connection while checking render status. " + describeNetworkError(e));
+      }
+      if (!res.ok){
+        const body = await safeJson(res);
+        throw new Error(`Status check failed (${res.status}): ${body?.error || res.statusText}`);
+      }
+      const task = await res.json();
+      if (task.status === 'PENDING' || task.status === 'THROTTLED'){
+        setStatus('queued', 'Queued');
+      } else if (task.status === 'RUNNING'){
+        setStatus('running', 'Rendering');
+      } else if (task.status === 'SUCCEEDED'){
+        setStatus('done', 'Ready');
+        return task;
+      } else if (task.status === 'FAILED' || task.status === 'CANCELLED'){
+        throw new Error(task.failure || `Generation ${task.status.toLowerCase()}.`);
+      }
+    }
+  }
+
+  async function safeJson(res){
+    try { return await res.json(); } catch { return null; }
+  }
+
+  function describeNetworkError(){
+    return "This is often the browser blocking a direct cross-origin request to Runway's API (CORS) — Runway's API is designed to be called from a server, not a browser tab. If every attempt fails immediately, you'll likely need a small backend/proxy to relay the request.";
+  }
+
+  els.generateBtn.addEventListener('click', async () => {
+    clearError();
+    const apiKey = els.apiKey.value.trim();
+    const promptText = els.prompt.value.trim();
+    if (!apiKey){ showError("Enter your Runway API key first."); return; }
+    if (!promptText){ showError("Describe the shot you want."); return; }
+
+    const payload = {
+      model: els.model.value,
+      promptText,
+      ratio: els.ratio.value,
+      duration: parseInt(els.duration.value, 10),
+    };
+    const neg = els.negPrompt.value.trim();
+    if (neg) payload.negativePrompt = neg;
+    const seed = els.seed.value.trim();
+    if (seed) payload.seed = parseInt(seed, 10);
+
+    setWorking(true);
+    setStatus('queued', 'Submitting');
+    startTimer();
+
+    try{
+      let res;
+      try {
+        res = await fetch(`${BASE_URL}/text_to_video`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'X-Runway-Version': RUNWAY_VERSION,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch(e){
+        throw new Error("Couldn't reach Runway's API. " + describeNetworkError());
+      }
+
+      if (!res.ok){
+        const body = await safeJson(res);
+        throw new Error(`Runway rejected the request (${res.status}): ${body?.error || res.statusText}`);
+      }
+      const created = await res.json();
+      const task = await pollTask(created.id, apiKey);
+      const url = task.output && task.output[0];
+      if (!url) throw new Error("Generation finished but no video URL came back.");
+      addTake(promptText, url);
+      playInMonitor(url);
+    } catch(err){
+      setStatus('failed', 'Failed');
+      showError(err.message || String(err));
+    } finally {
+      stopTimer();
+      setWorking(false);
+    }
+  });
+</script>
+</body>
+</html>
